@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeoMusic — Universal Links</title>
+    <title>NeoMusic — Stats & Fixed</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -16,7 +16,6 @@
             --text-dim: #a1a1aa;
             --danger: #ef4444;
             --success: #22c55e;
-            --warning: #f59e0b;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
@@ -58,6 +57,39 @@
         .btn-danger:hover { background: rgba(239,68,68,0.1); }
 
         .content { padding: 20px; }
+        
+        /* Stats Bar */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 30px 0;
+        }
+        .stat-card {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent);
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
         .hero { text-align: center; margin: 40px 0; }
         .hero h1 { font-size: 36px; margin-bottom: 10px; }
         .hero p { color: var(--text-dim); }
@@ -96,7 +128,7 @@
         .t-info { flex: 1; min-width: 0; }
         .t-title { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .t-artist { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
-        .t-source { font-size: 10px; color: var(--accent); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .t-plays { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
 
         .t-actions { display: flex; gap: 5px; opacity: 0; transition: 0.2s; }
         .track-item:hover .t-actions { opacity: 1; }
@@ -183,23 +215,14 @@
         .toast.visible { transform: translateX(0); }
         .toast.error { border-color: var(--danger); }
         .toast.success { border-color: var(--success); }
-        .toast.warning { border-color: var(--warning); }
 
         .loader { text-align: center; padding: 40px; color: var(--text-dim); font-size: 14px; }
         
-        .link-preview {
-            margin-top: 8px; padding: 8px; background: rgba(99,102,241,0.1);
-            border-radius: 6px; font-size: 12px; color: var(--text-dim);
-            display: none;
-        }
-        .link-preview.show { display: block; }
-        .link-preview .status { color: var(--success); font-weight: 600; }
-        .link-preview .warn { color: var(--warning); }
-
         @media (max-width: 768px) {
             .volume-control { display: none; }
             .p-track { width: 40%; }
             .player { padding: 0 10px; }
+            .stats-bar { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
@@ -216,7 +239,23 @@
     <div class="content">
         <div class="hero">
             <h1>Твоя музыка</h1>
-            <p>Любые ссылки • Поиск • Громкость</p>
+            <p>Статистика • Поиск • Громкость</p>
+        </div>
+
+        <!-- Statistics Bar -->
+        <div class="stats-bar">
+            <div class="stat-card">
+                <div class="stat-value" id="statTracks">0</div>
+                <div class="stat-label">Всего треков</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statUsers">0</div>
+                <div class="stat-label">Пользователей</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statPlays">0</div>
+                <div class="stat-label">Прослушиваний</div>
+            </div>
         </div>
 
         <div class="search-box">
@@ -246,9 +285,9 @@
     </div>
     <div class="p-controls">
         <div class="p-btns">
-            <button class="icon-btn" onclick="player.prev()">⏮</button>
-            <button class="play-circle" onclick="player.toggle()">▶</button>
-            <button class="icon-btn" onclick="player.next()">⏭</button>
+            <button class="icon-btn" onclick="player.prev()" title="Предыдущий">⏮</button>
+            <button class="play-circle" onclick="player.toggle()" id="playBtn" title="Играть/Пауза">▶</button>
+            <button class="icon-btn" onclick="player.next()" title="Следующий">⏭</button>
         </div>
         <div class="progress-wrap">
             <span id="pTimeCur">0:00</span>
@@ -259,7 +298,7 @@
         </div>
     </div>
     <div class="volume-control">
-        <button class="volume-icon" id="volIcon" onclick="player.toggleMute()">🔊</button>
+        <button class="volume-icon" id="volIcon" onclick="player.toggleMute()" title="Выключить звук">🔊</button>
         <div class="volume-slider" id="volSlider" onclick="player.setVolume(event)">
             <div class="volume-slider-fill" id="volFill"></div>
         </div>
@@ -297,10 +336,9 @@
                     <b>• Google Drive</b> (откройте доступ «Все с ссылкой»)<br>
                     <b>• Dropbox</b> (любая общая ссылка)<br>
                     <b>• GitHub</b> (ссылка на файл в репозитории)<br>
-                    <b>• Catbox.moe</b> (прямая ссылка)<br>
                     <b>• Любая прямая ссылка</b> на .mp3, .wav, .ogg, .m4a
                 </div>
-                <div class="link-preview" id="linkPreview"></div>
+                <div class="link-preview" id="linkPreview" style="margin-top:8px; padding:8px; background:rgba(99,102,241,0.1); border-radius:6px; font-size:12px; display:none;"></div>
             </div>
             <div class="form-group"><label>Обложка (необязательно)</label><input type="url" class="input" id="trCover" placeholder="https://..."></div>
             <button type="submit" class="btn btn-primary" style="width:100%">Сохранить</button>
@@ -324,7 +362,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<audio id="audio"></audio>
+<audio id="audio" preload="metadata"></audio>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -351,6 +389,8 @@
     let showFavOnly = false;
     let isLogin = true;
     let searchQuery = '';
+    let totalPlays = 0;
+    let isPlayingPromise = false;
 
     const $ = (id) => document.getElementById(id);
 
@@ -359,7 +399,6 @@
         if (!url) return { ok: false, error: 'Пустая ссылка' };
         url = url.trim();
 
-        // Google Drive
         if (url.includes('drive.google.com')) {
             const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
             if (match) {
@@ -367,21 +406,17 @@
                     ok: true,
                     direct: `https://drive.google.com/uc?export=download&id=${match[1]}`,
                     source: 'Google Drive',
-                    warning: 'Google часто блокирует прямое воспроизведение. Если не играет — используйте Dropbox.'
+                    warning: 'Может не работать из-за CORS'
                 };
             }
             return { ok: false, error: 'Неверная ссылка Google Drive' };
         }
 
-        // Dropbox
         if (url.includes('dropbox.com')) {
             let clean = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '').replace('?dl=1', '');
-            // Ensure raw parameter
-            if (!clean.includes('raw=1')) clean += (clean.includes('?') ? '&' : '?') + 'raw=1';
             return { ok: true, direct: clean, source: 'Dropbox', warning: null };
         }
 
-        // GitHub
         if (url.includes('github.com')) {
             const blobMatch = url.match(/github\.com\/([^\/]+)\/([^\/]+)\/blob\/([^\/]+)\/(.+)/);
             if (blobMatch) {
@@ -399,15 +434,13 @@
             return { ok: false, error: 'Неверная ссылка GitHub' };
         }
 
-        // Direct audio extensions
         const audioExts = ['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac'];
-        const lower = url.toLowerCase().split('?')[0]; // Remove query params for check
+        const lower = url.toLowerCase().split('?')[0];
         if (audioExts.some(ext => lower.endsWith(ext))) {
             return { ok: true, direct: url, source: 'Direct', warning: null };
         }
 
-        // Fallback
-        return { ok: true, direct: url, source: 'Unknown', warning: 'Ссылка может не работать без CORS.' };
+        return { ok: true, direct: url, source: 'Unknown', warning: 'Может не работать' };
     }
 
     // === AUTH ===
@@ -428,6 +461,20 @@
         }
         render();
     });
+
+    // === STATS ===
+    async function updateStats() {
+        // Total tracks
+        $('statTracks').textContent = tracks.length;
+        
+        // Total users
+        const usersSnap = await get(ref(db, 'users'));
+        const usersData = usersSnap.val();
+        $('statUsers').textContent = usersData ? Object.keys(usersData).length : 0;
+        
+        // Total plays
+        $('statPlays').textContent = totalPlays;
+    }
 
     // === APP FUNCTIONS ===
     window.app = {
@@ -465,19 +512,19 @@
         
         openTrackModal: () => {
             $('trId').value=''; $('trName').value=''; $('trArtist').value=''; $('trUrl').value=''; $('trCover').value='';
-            $('trackTitle').innerText='Добавить трек'; $('linkPreview').classList.remove('show');
+            $('trackTitle').innerText='Добавить трек'; $('linkPreview').style.display='none';
             $('mTrack').classList.add('show');
         },
         
         previewLink: (url) => {
             const preview = $('linkPreview');
             const result = parseAudioLink(url);
-            if (!url) { preview.classList.remove('show'); return; }
+            if (!url) { preview.style.display='none'; return; }
             
-            preview.classList.add('show');
+            preview.style.display='block';
             if (result.ok) {
-                let html = `<span class="status" style="color:var(--success)">✓ ${result.source}</span>`;
-                if (result.warning) html += `<br><span class="warn" style="color:var(--warning)">⚠ ${result.warning}</span>`;
+                let html = `<span style="color:var(--success)">✓ ${result.source}</span>`;
+                if (result.warning) html += `<br><span style="color:var(--danger)">⚠ ${result.warning}</span>`;
                 preview.innerHTML = html;
             } else {
                 preview.innerHTML = `<span style="color:var(--danger)">✗ ${result.error}</span>`;
@@ -501,6 +548,7 @@
                 source: parsed.source,
                 cover: $('trCover').value,
                 uid: user.uid,
+                plays: 0,
                 updatedAt: Date.now()
             };
             
@@ -528,7 +576,7 @@
             $('trUrl').value = t.originalUrl || t.url;
             $('trCover').value = t.cover || '';
             $('trackTitle').innerText = 'Редактировать';
-            $('linkPreview').classList.remove('show');
+            $('linkPreview').style.display='none';
             $('mTrack').classList.add('show');
         },
         
@@ -552,7 +600,7 @@
         },
         
         toggleFavFilter: () => {
-            if (!user) return toast('Войдите сначала', 'warning');
+            if (!user) return toast('Войдите сначала', 'error');
             showFavOnly = !showFavOnly;
             $('btnFav').style.background = showFavOnly ? 'rgba(239,68,68,0.2)' : '';
             render();
@@ -565,8 +613,15 @@
     const tracksRef = ref(db, 'tracks');
     onValue(tracksRef, (snapshot) => {
         const data = snapshot.val(); tracks = [];
-        if (data) Object.keys(data).forEach(key => tracks.push({ id: key, ...data[key] }));
+        if (data) {
+            Object.keys(data).forEach(key => {
+                const track = { id: key, ...data[key] };
+                totalPlays += track.plays || 0;
+                tracks.push(track);
+            });
+        }
         tracks.sort((a,b) => b.createdAt - a.createdAt);
+        updateStats();
         render();
     });
 
@@ -615,6 +670,7 @@
             const coverHtml = t.cover 
                 ? `<img src="${t.cover}" onerror="this.style.display='none';this.parentElement.innerHTML='<span class=\\'default\\'>🎵</span>'">`
                 : `<span class="default">🎵</span>`;
+            const plays = t.plays || 0;
             
             return `
             <div class="track-item ${active}" onclick="player.play('${t.id}')">
@@ -622,7 +678,7 @@
                 <div class="t-info">
                     <div class="t-title">${esc(t.title)}</div>
                     <div class="t-artist">${esc(t.artist)}</div>
-                    ${t.source ? `<div class="t-source">${t.source}</div>` : ''}
+                    <div class="t-plays">▶ ${plays} раз</div>
                 </div>
                 <div class="t-actions">
                     <button class="icon-btn ${isLiked ? 'liked' : ''}" onclick="event.stopPropagation(); toggleLike('${t.id}')" title="Избранное">♥</button>
@@ -644,68 +700,101 @@
         current: null,
         volume: savedVol !== null ? parseFloat(savedVol) : 0.7,
         muted: savedMuted,
+        isPlaying: false,
         
         init: () => {
             audio.volume = player.muted ? 0 : player.volume;
             player.updateVolumeUI();
         },
         
-        play: (id) => {
+        play: async (id) => {
             const t = tracks.find(x => x.id === id);
             if (!t) return;
-            if (player.current?.id === id) { player.toggle(); return; }
+            
+            // Если тот же трек - пауза/плей
+            if (player.current?.id === id) {
+                player.toggle();
+                return;
+            }
+
+            // Остановить текущее воспроизведение
+            if (!audio.paused) {
+                await audio.pause();
+            }
 
             player.current = t;
             audio.src = t.url;
             
-            // Debug log
-            console.log("Attempting to play:", t.url);
-
-            audio.play().then(() => {
-                player.updateUI(true);
+            try {
+                await audio.play();
+                player.isPlaying = true;
+                
+                // Update play count
+                const plays = (t.plays || 0) + 1;
+                await update(ref(db, `tracks/${id}`), { plays });
+                totalPlays++;
+                updateStats();
+                
+                player.updateUI();
                 render();
                 toast(`Играет: ${t.title}`, 'success');
-            }).catch(err => {
+            } catch (err) {
                 console.error('Playback error:', err);
                 let msg = 'Ошибка воспроизведения';
                 
                 if (err.name === 'NotAllowedError') {
                     msg = 'Нажмите на страницу, чтобы разрешить звук';
                 } else if (err.message && err.message.includes('403')) {
-                    msg = 'Ошибка 403: Доступ запрещен. Проверьте права доступа к файлу.';
+                    msg = 'Ошибка 403: Доступ запрещен';
                 } else if (err.message && err.message.includes('404')) {
-                    msg = 'Ошибка 404: Файл не найден. Ссылка устарела.';
-                } else if (err.name === 'NotSupportedError') {
-                    msg = 'Формат файла не поддерживается браузером.';
+                    msg = 'Ошибка 404: Файл не найден';
                 } else {
-                    msg = 'Не удалось загрузить аудио. Возможно, ссылка блокируется (CORS). Попробуйте Dropbox.';
+                    msg = 'Не удалось загрузить аудио. Попробуйте другую ссылку.';
                 }
                 
                 toast(msg, 'error');
                 player.current = null;
+                player.isPlaying = false;
                 render();
-            });
+            }
         },
         
-        toggle: () => {
-            if (!player.current) return;
-            if (audio.paused) { audio.play(); player.updateUI(true); }
-            else { audio.pause(); player.updateUI(false); }
+        toggle: async () => {
+            if (!player.current || !audio.src) return;
+            
+            try {
+                if (audio.paused) {
+                    await audio.play();
+                    player.isPlaying = true;
+                } else {
+                    await audio.pause();
+                    player.isPlaying = false;
+                }
+                player.updateUI();
+            } catch (err) {
+                console.error('Toggle error:', err);
+                toast('Ошибка управления воспроизведением', 'error');
+            }
         },
         
         next: () => {
+            if (tracks.length === 0) return;
             const idx = tracks.findIndex(x => x.id === player.current?.id);
-            if (idx > -1 && idx < tracks.length - 1) player.play(tracks[idx+1].id);
+            const nextIdx = idx >= 0 && idx < tracks.length - 1 ? idx + 1 : 0;
+            player.play(tracks[nextIdx].id);
         },
         
         prev: () => {
+            if (tracks.length === 0) return;
             const idx = tracks.findIndex(x => x.id === player.current?.id);
-            if (idx > 0) player.play(tracks[idx-1].id);
+            const prevIdx = idx > 0 ? idx - 1 : tracks.length - 1;
+            player.play(tracks[prevIdx].id);
         },
         
         seek: (e) => {
+            if (!audio.duration) return;
             const w = e.currentTarget.offsetWidth, x = e.offsetX;
-            if (audio.duration) audio.currentTime = (x / w) * audio.duration;
+            audio.currentTime = (x / w) * audio.duration;
         },
         
         setVolume: (e) => {
@@ -733,16 +822,19 @@
                             player.volume < 0.5 ? '🔉' : '🔊';
         },
         
-        updateUI: (playing) => {
+        updateUI: () => {
+            if (!player.current) return;
+            
             $('playerBar').classList.add('open');
-            $('pTitle').innerText = player.current?.title || '—';
-            $('pArtist').innerText = player.current?.artist || '—';
-            if (player.current?.cover) {
+            $('pTitle').innerText = player.current.title || '—';
+            $('pArtist').innerText = player.current.artist || '—';
+            $('playBtn').innerText = player.isPlaying ? '⏸' : '▶';
+            
+            if (player.current.cover) {
                 $('pCover').innerHTML = `<img src="${player.current.cover}" onerror="this.parentElement.innerHTML='<span class=\\'default\\'>🎵</span>'">`;
             } else {
                 $('pCover').innerHTML = `<span class="default">🎵</span>`;
             }
-            $('play-circle').innerHTML = playing ? '⏸' : '▶';
         }
     };
 
@@ -760,7 +852,20 @@
         $('pTimeTot').innerText = fmt(audio.duration);
     });
     
-    audio.addEventListener('ended', () => player.next());
+    audio.addEventListener('ended', () => {
+        player.isPlaying = false;
+        player.next();
+    });
+    
+    audio.addEventListener('pause', () => {
+        player.isPlaying = false;
+        player.updateUI();
+    });
+    
+    audio.addEventListener('play', () => {
+        player.isPlaying = true;
+        player.updateUI();
+    });
 
     // === UTILS ===
     function fmt(s) { if(!s || isNaN(s)) return "0:00"; const m=Math.floor(s/60), sec=Math.floor(s%60); return `${m}:${sec<10?'0'+sec:sec}`; }
@@ -779,7 +884,7 @@
         });
     });
 
-        document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', (e) => {
         if (e.target.tagName === 'INPUT') return;
         if (e.code === 'Space') { e.preventDefault(); player.toggle(); }
         if (e.code === 'ArrowRight') player.next();
@@ -787,7 +892,7 @@
         if (e.code === 'Escape') app.closeModals();
     });
 
-    // Make player and app globally accessible
+    // Expose to global scope
     window.player = player;
     window.app = app;
 </script>
