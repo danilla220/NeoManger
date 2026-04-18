@@ -3,55 +3,343 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Музыкальный Плеер</title>
+    <title>Glass Music Player</title>
     <style>
+        /* Основные стили страницы */
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            /* Абстрактный фон для демонстрации эффекта стекла */
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(100, 100, 100, 0.4) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(60, 60, 60, 0.4) 0%, transparent 40%);
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
+            color: white;
+            overflow: hidden;
         }
-        .player-container {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            width: 300px;
+
+        /* Контейнер плеера с эффектом Glassmorphism */
+        .glass-player {
+            width: 350px;
+            padding: 30px;
+            border-radius: 20px;
+            /* Эффект матового стекла */
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.7);
             text-align: center;
+            transition: transform 0.3s ease;
         }
-        .track-list {
+
+        .glass-player:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Обложка альбома */
+        .album-art {
+            width: 150px;
+            height: 150px;
+            border-radius: 15px;
+            background: linear-gradient(45deg, #333, #111);
+            margin: 0 auto 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: rgba(255,255,255,0.2);
+        }
+
+        /* Информация о треке */
+        .track-info h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .track-info p {
+            margin: 5px 0 20px;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Элементы управления */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-play {
+            background: rgba(255, 255, 255, 0.9);
+            color: black;
+            width: 60px;
+            height: 60px;
+        }
+
+        .btn-play:hover {
+            background: white;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+        }
+
+        /* Прогресс-бар */
+        .progress-container {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: white;
+            border-radius: 2px;
+            transition: width 0.1s linear;
+        }
+
+        /* Список треков */
+        .playlist {
             list-style: none;
             padding: 0;
-            margin-top: 20px;
+            margin: 0;
+            max-height: 150px;
+            overflow-y: auto;
             text-align: left;
         }
-        .track-item {
+
+        /* Скроллбар для списка */
+        .playlist::-webkit-scrollbar {
+            width: 5px;
+        }
+        .playlist::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+        }
+
+        .playlist li {
             padding: 10px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.8);
         }
-        .track-item:hover {
-            background-color: #f0f0f0;
+
+        .playlist li:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
         }
-        audio {
-            width: 100%;
-            margin-top: 15px;
+
+        .playlist li.active {
+            color: white;
+            border-left: 3px solid white;
+            background: rgba(255, 255, 255, 0.05);
         }
     </style>
 </head>
 <body>
 
-<div class="player-container">
-    <h2>Мой Плеер</h2>
-    <audio id="audio-player" controls></audio>
-    <ul class="track-list" id="track-list">
-        <!-- Треки будут добавлены через JavaScript -->
+<div class="glass-player">
+    <div class="album-art" id="album-art">♫</div>
+    
+    <div class="track-info">
+        <h2 id="track-title">Загрузка...</h2>
+        <p id="track-artist">Исполнитель</p>
+    </div>
+
+    <div class="progress-container" id="progress-container">
+        <div class="progress-bar" id="progress-bar"></div>
+    </div>
+
+    <div class="controls">
+        <button class="btn" id="prev-btn">⏮</button>
+        <button class="btn btn-play" id="play-btn">▶</button>
+        <button class="btn" id="next-btn">⏭</button>
+    </div>
+
+    <ul class="playlist" id="playlist">
+        <!-- Треки генерируются JS -->
     </ul>
+
+    <!-- Аудио элемент (скрытый) -->
+    <audio id="audio"></audio>
 </div>
 
-<script src="script.js"></script>
+<script>
+    // Данные треков. 
+    // Источники: Бесплатная музыка из архива Internet Archive или аналогичных открытых источников.
+    // Для замены на Google Disk: Вам нужно получить прямую ссылку на файл (не ссылку на просмотр), 
+    // что сложно сделать без API. Для теста используйте прямые ссылки.
+    const tracks = [
+        {
+            title: "Impromptu No. 2",
+            artist: "Scott Joplin (Public Domain)",
+            src: "https://ia800505.us.archive.org/13/items/ScottJoplinImpromptuNo2_201906/Scott%20Joplin%20-%20Impromptu%20No.%202.mp3"
+        },
+        {
+            title: "Moonlight Sonata",
+            artist: "Beethoven (Public Domain)",
+            src: "https://ia800503.us.archive.org/26/items/BeethovenMoonlightSonata/Beethoven%20-%20Moonlight%20Sonata.mp3"
+        },
+        {
+            title: "Gymnopédie No. 1",
+            artist: "Erik Satie (Public Domain)",
+            src: "https://ia800504.us.archive.org/24/items/SatieGymnopedieNo1/Gymnopedie%20No.%201.mp3"
+        }
+    ];
+
+    const audio = document.getElementById('audio');
+    const playBtn = document.getElementById('play-btn');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const titleEl = document.getElementById('track-title');
+    const artistEl = document.getElementById('track-artist');
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('progress-bar');
+    const playlistEl = document.getElementById('playlist');
+
+    let trackIndex = 0;
+    let isPlaying = false;
+
+    // Загрузка трека
+    function loadTrack(index) {
+        const track = tracks[index];
+        titleEl.textContent = track.title;
+        artistEl.textContent = track.artist;
+        audio.src = track.src;
+        
+        // Обновление активного элемента в плейлисте
+        updatePlaylistActive(index);
+    }
+
+    // Воспроизведение
+    function playTrack() {
+        isPlaying = true;
+        audio.play();
+        playBtn.textContent = '⏸';
+    }
+
+    // Пауза
+    function pauseTrack() {
+        isPlaying = false;
+        audio.pause();
+        playBtn.textContent = '▶';
+    }
+
+    // Переключение play/pause
+    playBtn.addEventListener('click', () => {
+        if (isPlaying) {
+            pauseTrack();
+        } else {
+            playTrack();
+        }
+    });
+
+    // Следующий трек
+    function nextTrack() {
+        trackIndex++;
+        if (trackIndex > tracks.length - 1) {
+            trackIndex = 0;
+        }
+        loadTrack(trackIndex);
+        playTrack();
+    }
+
+    // Предыдущий трек
+    function prevTrack() {
+        trackIndex--;
+        if (trackIndex < 0) {
+            trackIndex = tracks.length - 1;
+        }
+        loadTrack(trackIndex);
+        playTrack();
+    }
+
+    nextBtn.addEventListener('click', nextTrack);
+    prevBtn.addEventListener('click', prevTrack);
+
+    // Обновление прогресс-бара
+    audio.addEventListener('timeupdate', (e) => {
+        const { duration, currentTime } = e.srcElement;
+        const progressPercent = (currentTime / duration) * 100;
+        progressBar.style.width = `${progressPercent}%`;
+    });
+
+    // Перемотка при клике на прогресс-бар
+    progressContainer.addEventListener('click', (e) => {
+        const width = progressContainer.clientWidth;
+        const clickX = e.offsetX;
+        const duration = audio.duration;
+        audio.currentTime = (clickX / width) * duration;
+    });
+
+    // Автопереключение при окончании
+    audio.addEventListener('ended', nextTrack);
+
+    // Генерация плейлиста
+    function renderPlaylist() {
+        playlistEl.innerHTML = '';
+        tracks.forEach((track, index) => {
+            const li = document.createElement('li');
+            li.textContent = `${track.artist} - ${track.title}`;
+            li.addEventListener('click', () => {
+                trackIndex = index;
+                loadTrack(trackIndex);
+                playTrack();
+            });
+            playlistEl.appendChild(li);
+        });
+    }
+
+    function updatePlaylistActive(index) {
+        const items = playlistEl.querySelectorAll('li');
+        items.forEach((item, i) => {
+            if (i === index) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    }
+
+    // Инициализация
+    renderPlaylist();
+    loadTrack(trackIndex);
+</script>
+
 </body>
 </html>
