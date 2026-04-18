@@ -779,13 +779,17 @@
         });
     });
 
-    document.addEventListener('keydown', (e) => {
+        document.addEventListener('keydown', (e) => {
         if (e.target.tagName === 'INPUT') return;
         if (e.code === 'Space') { e.preventDefault(); player.toggle(); }
         if (e.code === 'ArrowRight') player.next();
         if (e.code === 'ArrowLeft') player.prev();
         if (e.code === 'Escape') app.closeModals();
     });
+
+    // Make player and app globally accessible
+    window.player = player;
+    window.app = app;
 </script>
 </body>
 </html>
