@@ -2137,36 +2137,46 @@
     }
 
     function setupAudioEvents() {
-        audio.addEventListener('timeupdate', () => {
-            if (audio.duration) {
-                const percent = (audio.currentTime / audio.duration) * 100;
-                document.getElementById('progressFill').style.width = percent + '%';
-                document.getElementById('currentTime').textContent = formatTime(audio.currentTime);
+    audio.addEventListener('timeupdate', () => {
+        if (audio.duration) {
+            const percent = (audio.currentTime / audio.duration) * 100;
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('currentTime').textContent = formatTime(audio.currentTime);
+        }
+    });
+
+    audio.addEventListener('loadedmetadata', () => {
+        document.getElementById('totalTime').textContent = formatTime(audio.duration);
+    });
+
+    audio.addEventListener('ended', () => {
+        if (state.repeat) {
+            audio.currentTime = 0;
+            audio.play();
+        } else {
+            nextTrack();
+        }
+    });
+
+    audio.addEventListener('error', (e) => {
+        const err = audio.error;
+        let msg = 'Не удалось загрузить аудио.';
+        if (err) {
+            switch (err.code) {
+                case 1: msg = 'Загрузка прервана пользователем.'; break;
+                case 2: msg = 'Сетевая ошибка. Проверьте соединение.'; break;
+                case 3: msg = 'Ошибка декодирования. Файл повреждён или не является аудио.'; break;
+                case 4: msg = 'Формат не поддерживается или доступ к файлу ограничен (CORS/права).'; break;
             }
-        });
+        }
+        console.warn('Audio Error:', e, 'Source:', audio.src);
+        showToast('error', msg);
+        state.isPlaying = false;
+        updatePlayerUI();
+    });
 
-        audio.addEventListener('loadedmetadata', () => {
-            document.getElementById('totalTime').textContent = formatTime(audio.duration);
-        });
-
-        audio.addEventListener('ended', () => {
-            if (state.repeat) {
-                audio.currentTime = 0;
-                audio.play();
-            } else {
-                nextTrack();
-            }
-        });
-
-        audio.addEventListener('error', () => {
-            showToast('error', 'Ошибка загрузки аудио. Проверьте доступ к файлу.');
-            state.isPlaying = false;
-            updatePlayerUI();
-        });
-
-        audio.volume = state.volume;
-    }
-
+    audio.volume = state.volume;
+}
     function updatePlayerUI() {
         const player = document.getElementById('bottomPlayer');
         const playIcon = document.getElementById('playIcon');
