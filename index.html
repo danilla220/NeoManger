@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Messenger Prototype</title>
+    <style>
+        :root {
+            --bg-color: #17212b;
+            --chat-bg: #0e1621;
+            --sidebar-bg: #17212b;
+            --text-color: #ffffff;
+            --secondary-text: #7c8b9d;
+            --input-bg: #17212b;
+            --message-out: #2b5278;
+            --message-in: #182533;
+            --border-color: #101921;
+            --accent: #5288c1;
+            --danger: #ff5b5b;
+        }
+
+        body.light-theme {
+            --bg-color: #ffffff;
+            --chat-bg: #e6ebee;
+            --sidebar-bg: #ffffff;
+            --text-color: #000000;
+            --secondary-text: #707579;
+            --input-bg: #ffffff;
+            --message-out: #eeffde;
+            --message-in: #ffffff;
+            --border-color: #dfe1e5;
+            --accent: #3390ec;
+            --danger: #ff3b30;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        
+        body { background-color: var(--bg-color); color: var(--text-color); height: 100vh; display: flex; overflow: hidden; transition: background 0.3s; }
+
+        /* Sidebar */
+        .sidebar { width: 300px; background-color: var(--sidebar-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; }
+        .profile-header { padding: 15px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .avatar { width: 50px; height: 50px; border-radius: 50%; background-color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: white; object-fit: cover; }
+        .user-info h3 { font-size: 16px; }
+        .user-info p { font-size: 13px; color: var(--secondary-text); }
+        
+        .chat-list { flex: 1; overflow-y: auto; }
+        .chat-item { padding: 10px 15px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.2s; }
+        .chat-item:hover, .chat-item.active { background-color: rgba(255,255,255,0.05); }
+        
+        /* Main Chat Area */
+        .main-chat { flex: 1; display: flex; flex-direction: column; background-color: var(--chat-bg); position: relative; }
+        .chat-header { padding: 10px 20px; background-color: var(--sidebar-bg); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .settings-btn { background: none; border: none; color: var(--secondary-text); cursor: pointer; font-size: 24px; }
+        
+        .messages-container { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .message { max-width: 70%; padding: 8px 12px; border-radius: 10px; font-size: 15px; line-height: 1.4; position: relative; word-wrap: break-word; }
+        .message.in { align-self: flex-start; background-color: var(--message-in); border-bottom-left-radius: 0; }
+        .message.out { align-self: flex-end; background-color: var(--message-out); border-bottom-right-radius: 0; }
+        .message-time { font-size: 11px; color: var(--secondary-text); float: right; margin-left: 10px; margin-top: 5px; }
+
+        .input-area { padding: 10px; background-color: var(--sidebar-bg); display: flex; gap: 10px; }
+        .message-input { flex: 1; padding: 12px; border-radius: 20px; border: none; background-color: var(--chat-bg); color: var(--text-color); outline: none; }
+        .send-btn { background-color: var(--accent); color: white; border: none; padding: 0 20px; border-radius: 50%; cursor: pointer; font-size: 18px; }
+
+        /* Modals */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background-color: var(--sidebar-bg); padding: 20px; border-radius: 10px; width: 350px; position: relative; }
+        .modal-header { font-size: 18px; margin-bottom: 15px; font-weight: bold; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: var(--secondary-text); font-size: 14px; }
+        .form-group input { width: 100%; padding: 8px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--chat-bg); color: var(--text-color); }
+        .btn-primary { width: 100%; padding: 10px; background-color: var(--accent); color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-danger { width: 100%; padding: 10px; background-color: transparent; color: var(--danger); border: 1px solid var(--danger); border-radius: 5px; cursor: pointer; margin-top: 10px; }
+        .close-modal { position: absolute; top: 15px; right: 15px; cursor: pointer; color: var(--secondary-text); }
+        
+        /* Toggle Switch */
+        .switch-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="profile-header" onclick="openProfileModal()">
+            <img id="currentAvatar" src="" class="avatar" alt="Avatar">
+            <div class="user-info">
+                <h3 id="currentName">Загрузка...</h3>
+                <p>в сети</p>
+            </div>
+        </div>
+        <div class="chat-list">
+            <div class="chat-item active">
+                <div class="avatar" style="background: #e17076;">Б</div>
+                <div class="user-info">
+                    <h3>Бот Поддержки</h3>
+                    <p>Привет! Как дела?</p>
+                </div>
+            </div>
+            <!-- Можно добавить больше чатов через JS -->
+        </div>
+    </div>
+
+    <!-- Main Chat -->
+    <div class="main-chat">
+        <div class="chat-header">
+            <h3>Бот Поддержки</h3>
+            <button class="settings-btn" onclick="openSettingsModal()">⋮</button>
+        </div>
+        <div class="messages-container" id="messagesContainer">
+            <!-- Сообщения появятся здесь -->
+        </div>
+        <div class="input-area">
+            <input type="text" class="message-input" id="messageInput" placeholder="Написать сообщение..." onkeypress="handleEnter(event)">
+            <button class="send-btn" onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('profileModal')">&times;</span>
+            <div class="modal-header">Редактировать профиль</div>
+            <div class="form-group">
+                <label>Имя</label>
+                <input type="text" id="editName">
+            </div>
+            <div class="form-group">
+                <label>Ссылка на аватар (URL)</label>
+                <input type="text" id="editAvatar" placeholder="https://...">
+            </div>
+            <button class="btn-primary" onclick="saveProfile()">Сохранить</button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('settingsModal')">&times;</span>
+            <div class="modal-header">Настройки</div>
+            
+            <div class="switch-container">
+                <span>Светлая тема</span>
+                <label class="switch">
+                    <input type="checkbox" id="themeToggle" onchange="toggleTheme()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <button class="btn-danger" onclick="clearData()">Сбросить все данные</button>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        const defaultState = {
+            user: {
+                name: 'Даниил',
+                avatar: 'https://via.placeholder.com/50/5288c1/ffffff?text=D'
+            },
+            theme: 'dark',
+            messages: [
+                { text: 'Добро пожаловать в веб-мессенджер!', time: new Date().toLocaleTimeString(), type: 'in' }
+            ]
+        };
+
+        let appState = JSON.parse(localStorage.getItem('messengerState')) || defaultState;
+
+        // --- Initialization ---
+        function init() {
+            applyTheme();
+            renderProfile();
+            renderMessages();
+        }
+
+        // --- Theme Logic ---
+        function applyTheme() {
+            if (appState.theme === 'light') {
+                document.body.classList.add('light-theme');
+                document.getElementById('themeToggle').checked = true;
+            } else {
+                document.body.classList.remove('light-theme');
+                document.getElementById('themeToggle').checked = false;
+            }
+        }
+
+        function toggleTheme() {
+            appState.theme = appState.theme === 'dark' ? 'light' : 'dark';
+            saveState();
+            applyTheme();
+        }
+
+        // --- Profile Logic ---
+        function renderProfile() {
+            document.getElementById('currentName').innerText = appState.user.name;
+            document.getElementById('currentAvatar').src = appState.user.avatar;
+        }
+
+        function openProfileModal() {
+            document.getElementById('editName').value = appState.user.name;
+            document.getElementById('editAvatar').value = appState.user.avatar;
+            document.getElementById('profileModal').style.display = 'flex';
+        }
+
+        function saveProfile() {
+            const newName = document.getElementById('editName').value;
+            const newAvatar = document.getElementById('editAvatar').value;
+            
+            if (newName.trim()) appState.user.name = newName;
+            if (newAvatar.trim()) appState.user.avatar = newAvatar;
+            
+            saveState();
+            renderProfile();
+            closeModal('profileModal');
+        }
+
+        // --- Chat Logic ---
+        function renderMessages() {
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = '';
+            
+            appState.messages.forEach(msg => {
+                const div = document.createElement('div');
+                div.className = `message ${msg.type}`;
+                div.innerHTML = `${msg.text} <span class="message-time">${msg.time}</span>`;
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            
+            if (!text) return;
+
+            // Add user message
+            const msg = {
+                text: text,
+                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                type: 'out'
+            };
+            
+            appState.messages.push(msg);
+            saveState();
+            renderMessages();
+            input.value = '';
+
+            // Simulate Bot Reply
+            setTimeout(() => {
+                const reply = {
+                    text: "Это автоматический ответ. Серверная часть не подключена.",
+                    time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                    type: 'in'
+                };
+                appState.messages.push(reply);
+                saveState();
+                renderMessages();
+            }, 1000);
+        }
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        // --- Settings & Utils ---
+        function openSettingsModal() {
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function clearData() {
+            if(confirm('Вы уверены? История переписки и настройки будут удалены.')) {
+                localStorage.removeItem('messengerState');
+                location.reload();
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem('messengerState', JSON.stringify(appState));
+        }
+
+        // Close modal on outside click
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = "none";
+            }
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>
