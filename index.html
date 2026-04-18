@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeoMusic — Realtime</title>
+    <title>NeoMusic — Universal Links</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -15,6 +15,8 @@
             --text: #f4f4f5;
             --text-dim: #a1a1aa;
             --danger: #ef4444;
+            --success: #22c55e;
+            --warning: #f59e0b;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
@@ -27,17 +29,14 @@
             overflow-x: hidden;
         }
 
-        /* Background Effects */
         .glow {
             position: fixed; width: 500px; height: 500px;
             background: radial-gradient(circle, rgba(99,102,241,0.15) 0%, rgba(0,0,0,0) 70%);
             top: -100px; left: -100px; z-index: -1; pointer-events: none;
         }
         
-        /* Layout */
         .app-container { max-width: 1000px; margin: 0 auto; padding-bottom: 100px; }
         
-        /* Navbar */
         nav {
             display: flex; justify-content: space-between; align-items: center;
             padding: 15px 20px; position: sticky; top: 0; z-index: 50;
@@ -58,13 +57,24 @@
         .btn-danger { color: var(--danger); border-color: rgba(239,68,68,0.2); }
         .btn-danger:hover { background: rgba(239,68,68,0.1); }
 
-        /* Main */
         .content { padding: 20px; }
         .hero { text-align: center; margin: 40px 0; }
         .hero h1 { font-size: 36px; margin-bottom: 10px; }
         .hero p { color: var(--text-dim); }
 
-        /* Track List */
+        .search-box { position: relative; margin: 0 0 20px 0; }
+        .search-input {
+            width: 100%; padding: 12px 16px 12px 40px;
+            background: var(--glass); border: 1px solid var(--border);
+            border-radius: 10px; color: white; font-size: 14px;
+            transition: 0.2s;
+        }
+        .search-input:focus { border-color: var(--accent); background: rgba(255,255,255,0.05); }
+        .search-icon {
+            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+            color: var(--text-dim); pointer-events: none; font-size: 16px;
+        }
+
         .track-list { display: flex; flex-direction: column; gap: 8px; }
         .track-item {
             display: flex; align-items: center; gap: 15px;
@@ -78,12 +88,15 @@
         .t-cover {
             width: 48px; height: 48px; border-radius: 6px; background: #27272a;
             display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;
+            position: relative;
         }
         .t-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .t-cover .default { font-size: 20px; opacity: 0.5; }
         
         .t-info { flex: 1; min-width: 0; }
         .t-title { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .t-artist { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+        .t-source { font-size: 10px; color: var(--accent); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 
         .t-actions { display: flex; gap: 5px; opacity: 0; transition: 0.2s; }
         .track-item:hover .t-actions { opacity: 1; }
@@ -95,7 +108,6 @@
         .icon-btn:hover { background: rgba(255,255,255,0.1); color: white; }
         .icon-btn.liked { color: var(--danger); opacity: 1; }
 
-        /* Player */
         .player {
             position: fixed; bottom: 0; left: 0; right: 0;
             height: 80px; background: #0f0f12; border-top: 1px solid var(--border);
@@ -105,19 +117,41 @@
         }
         .player.open { transform: translateY(0); }
         
-        .p-track { display: flex; align-items: center; gap: 12px; width: 30%; }
-        .p-controls { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+        .p-track { display: flex; align-items: center; gap: 12px; width: 30%; min-width: 0; }
+        .p-track .t-cover { width: 44px; height: 44px; }
+        .p-track .t-title { font-size: 13px; }
+        .p-track .t-artist { font-size: 11px; }
+        
+        .p-controls { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 500px; margin: 0 auto; }
         .p-btns { display: flex; align-items: center; gap: 15px; }
         .play-circle {
             width: 36px; height: 36px; border-radius: 50%; background: white; color: black;
             border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
         
-        .progress-wrap { width: 100%; max-width: 400px; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-dim); font-family: monospace; }
+        .progress-wrap { width: 100%; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-dim); font-family: monospace; }
         .progress-bg { flex: 1; height: 4px; background: #27272a; border-radius: 2px; cursor: pointer; position: relative; }
         .progress-fill { height: 100%; background: var(--accent); width: 0%; border-radius: 2px; pointer-events: none; }
 
-        /* Modals */
+        .volume-control {
+            display: flex; align-items: center; gap: 8px; width: 30%; justify-content: flex-end;
+        }
+        .volume-icon {
+            width: 32px; height: 32px; border-radius: 6px; border: none;
+            background: transparent; color: var(--text-dim); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 16px;
+        }
+        .volume-icon:hover { color: white; background: rgba(255,255,255,0.1); }
+        .volume-slider {
+            width: 100px; height: 4px; background: #27272a; border-radius: 2px;
+            cursor: pointer; position: relative; overflow: hidden;
+        }
+        .volume-slider-fill {
+            height: 100%; background: var(--text-dim); width: 70%;
+            transition: width 0.1s;
+        }
+        .volume-slider:hover .volume-slider-fill { background: var(--accent); }
+
         .modal-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
             z-index: 200; display: none; align-items: center; justify-content: center;
@@ -125,7 +159,7 @@
         .modal-overlay.show { display: flex; }
         .modal {
             background: #18181b; border: 1px solid var(--border); padding: 24px;
-            border-radius: 16px; width: 90%; max-width: 400px;
+            border-radius: 16px; width: 90%; max-width: 420px;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
         }
         .modal h2 { margin-bottom: 20px; font-size: 20px; }
@@ -137,8 +171,9 @@
             border-radius: 8px; color: white; font-family: inherit; transition: 0.2s;
         }
         .input:focus { border-color: var(--accent); background: #000; }
+        .form-hint { font-size: 11px; color: var(--text-dim); margin-top: 6px; line-height: 1.4; }
+        .form-hint b { color: var(--accent); }
 
-        /* Toast */
         .toast {
             position: fixed; top: 20px; right: 20px; padding: 12px 20px;
             background: #27272a; border-left: 4px solid var(--accent);
@@ -147,9 +182,25 @@
         }
         .toast.visible { transform: translateX(0); }
         .toast.error { border-color: var(--danger); }
+        .toast.success { border-color: var(--success); }
+        .toast.warning { border-color: var(--warning); }
 
-        /* Loading */
         .loader { text-align: center; padding: 40px; color: var(--text-dim); font-size: 14px; }
+        
+        .link-preview {
+            margin-top: 8px; padding: 8px; background: rgba(99,102,241,0.1);
+            border-radius: 6px; font-size: 12px; color: var(--text-dim);
+            display: none;
+        }
+        .link-preview.show { display: block; }
+        .link-preview .status { color: var(--success); font-weight: 600; }
+        .link-preview .warn { color: var(--warning); }
+
+        @media (max-width: 768px) {
+            .volume-control { display: none; }
+            .p-track { width: 40%; }
+            .player { padding: 0 10px; }
+        }
     </style>
 </head>
 <body>
@@ -165,7 +216,12 @@
     <div class="content">
         <div class="hero">
             <h1>Твоя музыка</h1>
-            <p>Realtime Database & Glassmorphism</p>
+            <p>Любые ссылки • Поиск • Громкость</p>
+        </div>
+
+        <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="searchInput" placeholder="Поиск по названию или исполнителю..." oninput="app.handleSearch(this.value)">
         </div>
 
         <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
@@ -182,7 +238,7 @@
 
 <div class="player" id="playerBar">
     <div class="p-track">
-        <div class="t-cover" id="pCover">🎵</div>
+        <div class="t-cover" id="pCover"><span class="default">🎵</span></div>
         <div style="min-width:0">
             <div class="t-title" id="pTitle">Название</div>
             <div class="t-artist" id="pArtist">Исполнитель</div>
@@ -202,7 +258,12 @@
             <span id="pTimeTot">0:00</span>
         </div>
     </div>
-    <div style="width:30%"></div>
+    <div class="volume-control">
+        <button class="volume-icon" id="volIcon" onclick="player.toggleMute()">🔊</button>
+        <div class="volume-slider" id="volSlider" onclick="player.setVolume(event)">
+            <div class="volume-slider-fill" id="volFill"></div>
+        </div>
+    </div>
 </div>
 
 <!-- Auth Modal -->
@@ -228,8 +289,20 @@
             <input type="hidden" id="trId">
             <div class="form-group"><label>Название</label><input type="text" class="input" id="trName" required></div>
             <div class="form-group"><label>Автор</label><input type="text" class="input" id="trArtist" required></div>
-            <div class="form-group"><label>Ссылка (MP3)</label><input type="url" class="input" id="trUrl" required placeholder="Прямая ссылка или Dropbox"></div>
-            <div class="form-group"><label>Обложка (URL)</label><input type="url" class="input" id="trCover" placeholder="https://..."></div>
+            <div class="form-group">
+                <label>Ссылка на аудио</label>
+                <input type="url" class="input" id="trUrl" required placeholder="https://..." oninput="app.previewLink(this.value)">
+                <div class="form-hint">
+                    Поддерживаются:<br>
+                    <b>• Google Drive</b> (откройте доступ «Все с ссылкой»)<br>
+                    <b>• Dropbox</b> (любая общая ссылка)<br>
+                    <b>• GitHub</b> (ссылка на файл в репозитории)<br>
+                    <b>• Catbox.moe</b> (прямая ссылка)<br>
+                    <b>• Любая прямая ссылка</b> на .mp3, .wav, .ogg, .m4a
+                </div>
+                <div class="link-preview" id="linkPreview"></div>
+            </div>
+            <div class="form-group"><label>Обложка (необязательно)</label><input type="url" class="input" id="trCover" placeholder="https://..."></div>
             <button type="submit" class="btn btn-primary" style="width:100%">Сохранить</button>
         </form>
         <button class="btn" style="width:100%; margin-top:10px; border:none; color:var(--text-dim)" onclick="app.closeModals()">Отмена</button>
@@ -258,7 +331,6 @@
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile, updatePassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import { getDatabase, ref, push, onValue, remove, update, set, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // CONFIG
     const firebaseConfig = {
       apiKey: "AIzaSyB8mjdLIu-do2hFViKLxDUKYoYTXgMmvZU",
       authDomain: "neofast-637fe.firebaseapp.com",
@@ -273,17 +345,93 @@
     const auth = getAuth(app_firebase);
     const db = getDatabase(app_firebase);
 
-    // STATE
     let user = null;
     let tracks = [];
-    let favorites = {}; // Map: { trackId: true }
+    let favorites = {};
     let showFavOnly = false;
     let isLogin = true;
+    let searchQuery = '';
 
-    // DOM
     const $ = (id) => document.getElementById(id);
-    
-    // --- AUTH ---
+
+    // === UNIVERSAL LINK PARSER ===
+    function parseAudioLink(url) {
+        if (!url) return { ok: false, error: 'Пустая ссылка' };
+        url = url.trim();
+
+        // Google Drive
+        if (url.includes('drive.google.com')) {
+            const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+            if (match) {
+                return {
+                    ok: true,
+                    direct: `https://drive.google.com/uc?export=download&id=${match[1]}`,
+                    source: 'Google Drive',
+                    warning: 'Может не работать из-за ограничений CORS. Если не играет — используйте Dropbox или Catbox.'
+                };
+            }
+            return { ok: false, error: 'Неверная ссылка Google Drive' };
+        }
+
+        // Dropbox
+        if (url.includes('dropbox.com')) {
+            let clean = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '').replace('?dl=1', '');
+            return { ok: true, direct: clean, source: 'Dropbox', warning: null };
+        }
+
+        // GitHub
+        if (url.includes('github.com')) {
+            const blobMatch = url.match(/github\.com\/([^\/]+)\/([^\/]+)\/blob\/([^\/]+)\/(.+)/);
+            if (blobMatch) {
+                const [, usr, repo, branch, path] = blobMatch;
+                return {
+                    ok: true,
+                    direct: `https://raw.githubusercontent.com/${usr}/${repo}/${branch}/${path}`,
+                    source: 'GitHub',
+                    warning: 'Файлы до 100 МБ. Убедитесь, что файл существует в репозитории.'
+                };
+            }
+            if (url.includes('raw.githubusercontent.com')) {
+                return { ok: true, direct: url, source: 'GitHub', warning: null };
+            }
+            return { ok: false, error: 'Неверная ссылка GitHub' };
+        }
+
+        // Catbox.moe
+        if (url.includes('catbox.moe')) {
+            return { ok: true, direct: url, source: 'Catbox.moe', warning: null };
+        }
+
+        // Vocaroo
+        if (url.includes('vocaroo.com')) {
+            const id = url.match(/vocaroo\.com\/([a-zA-Z0-9]+)/)?.[1];
+            if (id) {
+                return {
+                    ok: true,
+                    direct: `https://media.vocaroo.com/mp3/${id}`,
+                    source: 'Vocaroo',
+                    warning: null
+                };
+            }
+        }
+
+        // Direct audio extensions
+        const audioExts = ['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac', '.opus'];
+        const lower = url.toLowerCase();
+        if (audioExts.some(ext => lower.endsWith(ext))) {
+            return { ok: true, direct: url, source: 'Прямая ссылка', warning: null };
+        }
+
+        // Fallback: try as-is but warn
+        return {
+            ok: true,
+            direct: url,
+            source: 'Неизвестный источник',
+            warning: 'Ссылка может не работать. Убедитесь, что она ведёт напрямую на аудиофайл и сервер разрешает CORS.'
+        };
+    }
+
+    // === AUTH ===
     onAuthStateChanged(auth, async (u) => {
         user = u;
         if (user) {
@@ -292,8 +440,6 @@
                 <button class="btn btn-primary" onclick="app.openTrackModal()">+ Трек</button>
             `;
             $('btnAdd').style.display = 'inline-block';
-            
-            // Load Favorites
             const snap = await get(child(ref(db), `users/${user.uid}/favorites`));
             favorites = snap.val() || {};
         } else {
@@ -304,127 +450,184 @@
         render();
     });
 
-    window.handleAuthLogic = async (e) => {
-        e.preventDefault();
-        const email = $('authEmail').value;
-        const pass = $('authPass').value;
-        const name = $('authName').value;
-
-        try {
-            if (isLogin) {
-                await signInWithEmailAndPassword(auth, email, pass);
-            } else {
-                const cred = await createUserWithEmailAndPassword(auth, email, pass);
-                await updateProfile(cred.user, { displayName: name || email.split('@')[0] });
-                // Init user DB
-                await set(ref(db, 'users/' + cred.user.uid), {
-                    email: email,
-                    name: name || email.split('@')[0],
-                    createdAt: Date.now()
-                });
+    // === APP FUNCTIONS (exposed to window) ===
+    window.app = {
+        goHome: () => { showFavOnly=false; searchQuery=''; $('searchInput').value=''; render(); },
+        handleSearch: (query) => { searchQuery = query.toLowerCase().trim(); render(); },
+        
+        openAuth: () => $('mAuth').classList.add('show'),
+        toggleAuthMode: () => {
+            isLogin = !isLogin;
+            $('authTitle').innerText = isLogin ? 'Вход' : 'Регистрация';
+            $('authBtn').innerText = isLogin ? 'Войти' : 'Создать';
+            $('regNameBox').style.display = isLogin ? 'none' : 'block';
+        },
+        handleAuth: async (e) => {
+            e.preventDefault();
+            const email = $('authEmail').value, pass = $('authPass').value, name = $('authName').value;
+            try {
+                if (isLogin) {
+                    await signInWithEmailAndPassword(auth, email, pass);
+                } else {
+                    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+                    await updateProfile(cred.user, { displayName: name || email.split('@')[0] });
+                    await set(ref(db, 'users/' + cred.user.uid), { email, name: name || email.split('@')[0], createdAt: Date.now() });
+                }
+                app.closeModals(); toast('Успешно!', 'success');
+            } catch (err) { toast(err.message, 'error'); }
+        },
+        
+        logout: async () => {
+            try {
+                await signOut(auth);
+                toast('Вы вышли из аккаунта', 'success');
+            } catch (err) {
+                toast('Ошибка выхода: ' + err.message, 'error');
             }
-            app.closeModals();
-            toast('Успешно!');
-        } catch (err) {
-            toast(err.message, 1);
-        }
+        },
+        
+        openTrackModal: () => {
+            $('trId').value=''; $('trName').value=''; $('trArtist').value=''; $('trUrl').value=''; $('trCover').value='';
+            $('trackTitle').innerText='Добавить трек'; $('linkPreview').classList.remove('show');
+            $('mTrack').classList.add('show');
+        },
+        
+        previewLink: (url) => {
+            const preview = $('linkPreview');
+            const result = parseAudioLink(url);
+            if (!url) { preview.classList.remove('show'); return; }
+            
+            preview.classList.add('show');
+            if (result.ok) {
+                let html = `<span class="status">✓ ${result.source}</span>`;
+                if (result.warning) html += `<br><span class="warn">⚠ ${result.warning}</span>`;
+                preview.innerHTML = html;
+            } else {
+                preview.innerHTML = `<span style="color:var(--danger)">✗ ${result.error}</span>`;
+            }
+        },
+        
+        saveTrack: async (e) => {
+            e.preventDefault();
+            if (!user) return toast('Нужен вход', 'error');
+            
+            const rawUrl = $('trUrl').value;
+            const parsed = parseAudioLink(rawUrl);
+            if (!parsed.ok) return toast(parsed.error, 'error');
+            
+            const id = $('trId').value;
+            const data = {
+                title: $('trName').value,
+                artist: $('trArtist').value,
+                url: parsed.direct,
+                originalUrl: rawUrl,
+                source: parsed.source,
+                cover: $('trCover').value,
+                uid: user.uid,
+                updatedAt: Date.now()
+            };
+            
+            try {
+                if (id) {
+                    const t = tracks.find(x => x.id === id);
+                    if (t?.uid !== user.uid) throw new Error("Чужой трек");
+                    await update(ref(db, `tracks/${id}`), data);
+                    toast('Обновлено', 'success');
+                } else {
+                    data.createdAt = Date.now();
+                    await push(ref(db, 'tracks'), data);
+                    toast('Добавлено', 'success');
+                }
+                app.closeModals();
+            } catch (err) { toast(err.message, 'error'); }
+        },
+        
+        editTrack: (id) => {
+            const t = tracks.find(x => x.id === id);
+            if (!t) return;
+            $('trId').value = t.id;
+            $('trName').value = t.title;
+            $('trArtist').value = t.artist;
+            $('trUrl').value = t.originalUrl || t.url;
+            $('trCover').value = t.cover || '';
+            $('trackTitle').innerText = 'Редактировать';
+            $('linkPreview').classList.remove('show');
+            $('mTrack').classList.add('show');
+        },
+        
+        openProfile: () => {
+            if (!user) return app.openAuth();
+            $('profName').value = user.displayName || '';
+            $('profPass').value = '';
+            $('mProfile').classList.add('show');
+        },
+        
+        updateProfile: async (e) => {
+            e.preventDefault();
+            const name = $('profName').value, pass = $('profPass').value;
+            try {
+                await updateProfile(user, { displayName: name });
+                await update(ref(db, `users/${user.uid}`), { name });
+                if (pass.length >= 6) await updatePassword(user, pass);
+                toast('Профиль сохранён', 'success');
+                app.closeModals();
+            } catch(err) { toast(err.message, 'error'); }
+        },
+        
+        toggleFavFilter: () => {
+            if (!user) return toast('Войдите сначала', 'warning');
+            showFavOnly = !showFavOnly;
+            $('btnFav').style.background = showFavOnly ? 'rgba(239,68,68,0.2)' : '';
+            render();
+        },
+        
+        closeModals: () => document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('show'))
     };
 
-    window.logout = () => signOut(auth);
-
-    // --- TRACKS DB ---
+    // === TRACKS DB ===
     const tracksRef = ref(db, 'tracks');
     onValue(tracksRef, (snapshot) => {
-        const data = snapshot.val();
-        tracks = [];
-        if (data) {
-            Object.keys(data).forEach(key => {
-                tracks.push({ id: key, ...data[key] });
-            });
-        }
-        // Sort by new
+        const data = snapshot.val(); tracks = [];
+        if (data) Object.keys(data).forEach(key => tracks.push({ id: key, ...data[key] }));
         tracks.sort((a,b) => b.createdAt - a.createdAt);
         render();
     });
 
-    window.saveTrackLogic = async (e) => {
-        e.preventDefault();
-        if (!user) return toast('Нужен вход', 1);
-
-        const id = $('trId').value;
-        const data = {
-            title: $('trName').value,
-            artist: $('trArtist').value,
-            url: $('trUrl').value,
-            cover: $('trCover').value,
-            uid: user.uid,
-            updatedAt: Date.now()
-        };
-
-        try {
-            if (id) {
-                // Edit check
-                const t = tracks.find(x => x.id === id);
-                if (t.uid !== user.uid) throw new Error("Чужой трек");
-                await update(ref(db, `tracks/${id}`), data);
-                toast('Обновлено');
-            } else {
-                data.createdAt = Date.now();
-                await push(tracksRef, data);
-                toast('Добавлено');
-            }
-            app.closeModals();
-        } catch (err) {
-            toast(err.message, 1);
-        }
-    };
-
     window.deleteTrackLogic = async (id) => {
-        if (!confirm('Удалить?')) return;
+        if (!confirm('Удалить трек?')) return;
         const t = tracks.find(x => x.id === id);
-        if (t.uid !== user.uid) return toast('Нельзя удалить чужое', 1);
-        
+        if (t?.uid !== user?.uid) return toast('Нельзя удалить чужой трек', 'error');
         await remove(ref(db, `tracks/${id}`));
-        toast('Удалено');
+        toast('Трек удалён', 'success');
     };
 
     window.toggleLike = async (id) => {
         if (!user) return app.openAuth();
         const path = `users/${user.uid}/favorites/${id}`;
-        if (favorites[id]) {
-            await update(ref(db), { [path]: null });
-            delete favorites[id];
-        } else {
-            await update(ref(db), { [path]: true });
-            favorites[id] = true;
-        }
-        render(); // Re-render to update heart icon
+        if (favorites[id]) { await update(ref(db), { [path]: null }); delete favorites[id]; }
+        else { await update(ref(db), { [path]: true }); favorites[id] = true; }
+        render();
     };
 
-    window.updateProfileLogic = async (e) => {
-        e.preventDefault();
-        const name = $('profName').value;
-        const pass = $('profPass').value;
-        
-        try {
-            await updateProfile(user, { displayName: name });
-            await update(ref(db, `users/${user.uid}`), { name });
-            if (pass.length >= 6) await updatePassword(user, pass);
-            toast('Профиль сохранен');
-            app.closeModals();
-        } catch(err) { toast(err.message, 1); }
-    };
-
-    // --- RENDER ---
+    // === RENDER ===
     function render() {
         const list = $('trackContainer');
         let filtered = tracks;
+        if (searchQuery) {
+            filtered = filtered.filter(t => 
+                t.title?.toLowerCase().includes(searchQuery) || 
+                t.artist?.toLowerCase().includes(searchQuery)
+            );
+        }
         if (showFavOnly) {
-            filtered = tracks.filter(t => favorites[t.id]);
+            filtered = filtered.filter(t => favorites[t.id]);
         }
 
         if (filtered.length === 0) {
-            list.innerHTML = `<div class="loader">${showFavOnly ? 'Нет избранных треков' : 'Список пуст'}</div>`;
+            const msg = tracks.length === 0 ? 'Список пуст' : 
+                       searchQuery ? 'Ничего не найдено' : 
+                       showFavOnly ? 'Нет избранных треков' : 'По запросу ничего нет';
+            list.innerHTML = `<div class="loader">${msg}</div>`;
             return;
         }
 
@@ -432,149 +635,180 @@
             const isOwner = user && t.uid === user.uid;
             const isLiked = favorites[t.id];
             const active = player.current?.id === t.id ? 'active' : '';
+            const coverHtml = t.cover 
+                ? `<img src="${t.cover}" onerror="this.style.display='none';this.parentElement.innerHTML='<span class=\\'default\\'>🎵</span>'">`
+                : `<span class="default">🎵</span>`;
             
             return `
             <div class="track-item ${active}" onclick="player.play('${t.id}')">
-                <div class="t-cover">
-                    ${t.cover ? `<img src="${t.cover}" onerror="this.style.display='none';this.parentElement.innerText='🎵'">` : '🎵'}
-                </div>
+                <div class="t-cover">${coverHtml}</div>
                 <div class="t-info">
                     <div class="t-title">${esc(t.title)}</div>
                     <div class="t-artist">${esc(t.artist)}</div>
+                    ${t.source ? `<div class="t-source">${t.source}</div>` : ''}
                 </div>
                 <div class="t-actions">
-                    <button class="icon-btn ${isLiked ? 'liked' : ''}" onclick="event.stopPropagation(); toggleLike('${t.id}')">♥</button>
+                    <button class="icon-btn ${isLiked ? 'liked' : ''}" onclick="event.stopPropagation(); toggleLike('${t.id}')" title="Избранное">♥</button>
                     ${isOwner ? `
-                        <button class="icon-btn" onclick="event.stopPropagation(); app.editTrack('${t.id}')">✎</button>
-                        <button class="icon-btn" style="color:var(--danger)" onclick="event.stopPropagation(); deleteTrackLogic('${t.id}')">✕</button>
+                        <button class="icon-btn" onclick="event.stopPropagation(); app.editTrack('${t.id}')" title="Редактировать">✎</button>
+                        <button class="icon-btn" style="color:var(--danger)" onclick="event.stopPropagation(); deleteTrackLogic('${t.id}')" title="Удалить">✕</button>
                     ` : ''}
                 </div>
             </div>`;
         }).join('');
     }
 
-    // --- PLAYER ---
+    // === PLAYER + VOLUME ===
     const audio = $('audio');
+    const savedVol = localStorage.getItem('neomusic_volume');
+    const savedMuted = localStorage.getItem('neomusic_muted') === 'true';
+    
     const player = {
         current: null,
+        volume: savedVol !== null ? parseFloat(savedVol) : 0.7,
+        muted: savedMuted,
+        
+        init: () => {
+            audio.volume = player.muted ? 0 : player.volume;
+            player.updateVolumeUI();
+        },
+        
         play: (id) => {
             const t = tracks.find(x => x.id === id);
             if (!t) return;
-
-            if (player.current?.id === id) {
-                player.toggle();
-                return;
-            }
-
-            // Link Processing
-            let url = t.url;
-            if (url.includes('drive.google.com')) {
-                const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                if(m) url = `https://drive.google.com/uc?export=download&id=${m[1]}`;
-            } else if (url.includes('dropbox.com')) {
-                url = url.replace('dl=0','raw=1').replace('www.dropbox.com','dl.dropboxusercontent.com');
-            }
+            if (player.current?.id === id) { player.toggle(); return; }
 
             player.current = t;
-            audio.src = url;
+            audio.src = t.url;
+            
+            // Handle playback with detailed errors
             audio.play().then(() => {
                 player.updateUI(true);
                 render();
-            }).catch(e => {
-                console.error(e);
-                toast('Ошибка воспроизведения (CORS или битая ссылка)', 1);
+            }).catch(err => {
+                console.error('Playback error:', err);
+                let msg = 'Не удалось воспроизвести трек';
+                
+                // Try to determine error type
+                if (err.name === 'NotAllowedError') {
+                    msg = 'Воспроизведение заблокировано браузером. Нажмите на страницу, затем попробуйте снова.';
+                } else if (err.message?.includes('403')) {
+                    msg = 'Доступ запрещён (403). Проверьте настройки приватности файла.';
+                } else if (err.message?.includes('404')) {
+                    msg = 'Файл не найден (404). Ссылка может быть устаревшей.';
+                } else if (err.message?.toLowerCase().includes('cors')) {
+                    msg = 'Сервер блокирует воспроизведение (CORS). Попробуйте другой хостинг (Dropbox, Catbox).';
+                } else if (err.message?.includes('decode') || err.message?.includes('format')) {
+                    msg = 'Неподдерживаемый формат аудио. Используйте MP3, WAV или OGG.';
+                }
+                
+                toast(msg, 'error');
+                player.current = null;
+                render();
             });
         },
+        
         toggle: () => {
             if (!player.current) return;
             if (audio.paused) { audio.play(); player.updateUI(true); }
             else { audio.pause(); player.updateUI(false); }
         },
+        
         next: () => {
             const idx = tracks.findIndex(x => x.id === player.current?.id);
             if (idx > -1 && idx < tracks.length - 1) player.play(tracks[idx+1].id);
         },
+        
         prev: () => {
             const idx = tracks.findIndex(x => x.id === player.current?.id);
             if (idx > 0) player.play(tracks[idx-1].id);
         },
+        
         seek: (e) => {
-            const w = e.currentTarget.offsetWidth;
-            const x = e.offsetX;
-            audio.currentTime = (x / w) * audio.duration;
+            const w = e.currentTarget.offsetWidth, x = e.offsetX;
+            if (audio.duration) audio.currentTime = (x / w) * audio.duration;
         },
+        
+        setVolume: (e) => {
+            const slider = $('volSlider'), rect = slider.getBoundingClientRect();
+            const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            player.volume = pct;
+            player.muted = false;
+            audio.volume = pct;
+            localStorage.setItem('neomusic_volume', pct.toString());
+            localStorage.setItem('neomusic_muted', 'false');
+            player.updateVolumeUI();
+        },
+        
+        toggleMute: () => {
+            player.muted = !player.muted;
+            audio.volume = player.muted ? 0 : player.volume;
+            localStorage.setItem('neomusic_muted', player.muted.toString());
+            player.updateVolumeUI();
+        },
+        
+        updateVolumeUI: () => {
+            const icon = $('volIcon'), fill = $('volFill');
+            fill.style.width = `${(player.muted ? 0 : player.volume) * 100}%`;
+            icon.innerText = player.muted || player.volume === 0 ? '🔇' : 
+                            player.volume < 0.5 ? '🔉' : '🔊';
+        },
+        
         updateUI: (playing) => {
             $('playerBar').classList.add('open');
-            $('pTitle').innerText = player.current.title;
-            $('pArtist').innerText = player.current.artist;
-            $('pCover').innerHTML = player.current.cover ? `<img src="${player.current.cover}">` : '🎵';
+            $('pTitle').innerText = player.current?.title || '—';
+            $('pArtist').innerText = player.current?.artist || '—';
+            if (player.current?.cover) {
+                $('pCover').innerHTML = `<img src="${player.current.cover}" onerror="this.parentElement.innerHTML='<span class=\\'default\\'>🎵</span>'">`;
+            } else {
+                $('pCover').innerHTML = `<span class="default">🎵</span>`;
+            }
             $('play-circle').innerHTML = playing ? '⏸' : '▶';
         }
     };
 
+    player.init();
+
     audio.addEventListener('timeupdate', () => {
-        const p = (audio.currentTime / audio.duration) * 100;
-        $('pFill').style.width = `${p||0}%`;
-        $('pTimeCur').innerText = fmt(audio.currentTime);
+        if (audio.duration) {
+            const p = (audio.currentTime / audio.duration) * 100;
+            $('pFill').style.width = `${p}%`;
+            $('pTimeCur').innerText = fmt(audio.currentTime);
+        }
+    });
+    
+    audio.addEventListener('loadedmetadata', () => {
         $('pTimeTot').innerText = fmt(audio.duration);
     });
+    
     audio.addEventListener('ended', () => player.next());
 
-    // --- UTILS ---
-    function fmt(s) {
-        if(isNaN(s)) return "0:00";
-        const m = Math.floor(s/60);
-        const sec = Math.floor(s%60);
-        return `${m}:${sec<10?'0'+sec:sec}`;
-    }
+    // === UTILS ===
+    function fmt(s) { if(!s || isNaN(s)) return "0:00"; const m=Math.floor(s/60), sec=Math.floor(s%60); return `${m}:${sec<10?'0'+sec:sec}`; }
     function esc(s) { return s ? s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])) : ''; }
-    function toast(msg, err) {
+    
+    function toast(msg, type='info') {
         const t = $('toast');
         t.innerText = msg;
-        t.className = err ? 'toast error visible' : 'toast visible';
-        setTimeout(() => t.classList.remove('visible'), 3000);
+        t.className = `toast ${type} visible`;
+        setTimeout(() => t.classList.remove('visible'), 3500);
     }
 
-    // --- APP EXPOSED ---
-    window.app = {
-        goHome: () => { showFavOnly=false; render(); },
-        openAuth: () => $('mAuth').classList.add('show'),
-        openTrackModal: () => {
-            $('trId').value = ''; $('trName').value = ''; $('trArtist').value = ''; $('trUrl').value = ''; $('trCover').value = '';
-            $('trackTitle').innerText = 'Добавить трек';
-            $('mTrack').classList.add('show');
-        },
-        editTrack: (id) => {
-            const t = tracks.find(x => x.id === id);
-            $('trId').value = t.id; $('trName').value = t.title; $('trArtist').value = t.artist;
-            $('trUrl').value = t.url; $('trCover').value = t.cover || '';
-            $('trackTitle').innerText = 'Редактировать';
-            $('mTrack').classList.add('show');
-        },
-        openProfile: () => {
-            if(!user) return app.openAuth();
-            $('profName').value = user.displayName || '';
-            $('profPass').value = '';
-            $('mProfile').classList.add('show');
-        },
-        closeModals: () => document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('show')),
-        toggleAuthMode: () => {
-            isLogin = !isLogin;
-            $('authTitle').innerText = isLogin ? 'Вход' : 'Регистрация';
-            $('authBtn').innerText = isLogin ? 'Войти' : 'Создать';
-            $('regNameBox').style.display = isLogin ? 'none' : 'block';
-        },
-        toggleFavFilter: () => {
-            if(!user) return toast('Войдите сначала', 1);
-            showFavOnly = !showFavOnly;
-            $('btnFav').style.background = showFavOnly ? 'rgba(239,68,68,0.2)' : '';
-            render();
-        },
-        handleAuth: window.handleAuthLogic,
-        saveTrack: window.saveTrackLogic,
-        updateProfile: window.updateProfileLogic
-    };
-    window.player = player;
+    // Close modals on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) app.closeModals();
+        });
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        if (e.code === 'Space') { e.preventDefault(); player.toggle(); }
+        if (e.code === 'ArrowRight') player.next();
+        if (e.code === 'ArrowLeft') player.prev();
+        if (e.code === 'Escape') app.closeModals();
+    });
 </script>
 </body>
 </html>
