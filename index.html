@@ -1846,31 +1846,43 @@
         return null;
     }
 
-    function handleAddTrack(e) {
+        function handleAddTrack(e) {
         e.preventDefault();
 
         const name = document.getElementById('trackNameInput').value.trim();
         const artist = document.getElementById('trackArtistInput').value.trim();
-        const link = document.getElementById('trackLinkInput').value.trim();
+        const rawLink = document.getElementById('trackLinkInput').value.trim();
 
-        const fileId = parseGoogleDriveUrl(link);
-        if (!fileId) {
-            showToast('error', 'Неверная ссылка Google Drive');
+        // Обрабатываем ссылку
+        const linkData = getDirectAudioLink(rawLink);
+        
+        if (!linkData) {
+            showToast('error', 'Не удалось распознать ссылку');
             return;
         }
 
-        // Convert to direct link
-        const directLink = `https://drive.google.com/uc?export=download&id=${fileId}`;
-        const previewLink = `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
+        // Если есть предупреждение (например, для Google Drive), показываем его
+        if (linkData.warning) {
+            // Можно показать подтверждение, но пока просто добавим трек
+            console.warn(linkData.warning);
+        }
+
+        // Для Google Drive и Dropbox можно попробовать получить превью
+        let coverUrl = '';
+        if (linkData.type === 'google_drive') {
+            const fileId = rawLink.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+            if (fileId) coverUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
+        }
 
         const track = {
             id: Date.now().toString(),
             name: name,
             artist: artist,
-            directLink: directLink,
-            coverUrl: previewLink,
+            directLink: linkData.url, // Используем обработанную ссылку
+            sourceType: linkData.type, // Сохраняем тип источника
+            coverUrl: coverUrl,
             customCover: state.coverData,
-            addedBy: state.currentUser.email,
+            addedBy: state.currentUser ? state.currentUser.email : 'guest',
             addedAt: new Date().toISOString(),
             favorites: 0
         };
@@ -1880,7 +1892,9 @@
         closeModal('addTrackModal');
         renderTrackList();
         updateStats();
-        showToast('success', `"${name}" добавлен в библиотеку`);
+        
+        const msg = linkData.warning ? `"${name}" добавлен. ${linkData.warning}` : `"${name}" успешно добавлен!`;
+        showToast(linkData.warning ? 'info' : 'success', msg);
     }
 
     function deleteTrack(id) {
@@ -2037,6 +2051,89 @@
         });
     }
 
+        /**
+ * Преобразует различные типы ссылок в прямой поток для <audio>
+ */
+function getDirectAudioLink(url) {
+    if (!url) return null;
+    url = url.trim();
+
+    // 1. Google Drive
+    if (url.includes('drive.google.com')) {
+        const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+        if (match) {
+            // Используем uc?export=download, но предупреждаем о CORS
+            return {
+                url: `https://drive.google.com/uc?export=download&id=${match[1]}`,
+                type: 'google_drive',
+                warning: 'Google Drive может блокировать воспроизведение из-за CORS. Если не играет, используйте Dropbox или GitHub.'
+            };
+        }
+    }
+
+    // 2. Dropbox
+    if (url.includes('dropbox.com')) {
+        // Заменяем dl=0 на raw=1 для прямого потока
+        let cleanUrl = url.split('?')[0]; // убираем старые параметры
+        if (url.includes('?')) {
+             // сохраняем другие параметры если есть, но меняем dl
+             cleanUrl = url.replace(/dl=\d+/, 'dl=1'); 
+        }
+        // Гарантируем raw=1
+        if (!cleanUrl.includes('raw=1')) {
+            cleanUrl += (cleanUrl.includes('?') ? '&' : '?') + 'raw=1';
+        }
+        // Альтернативный надежный формат: dl.dropboxusercontent.com
+        const directDropbox = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '').replace('?dl=1', '');
+        
+        return {
+            url: directDropbox,
+            type: 'dropbox',
+            warning: null
+        };
+    }
+
+    // 3. GitHub
+    if (url.includes('github.com')) {
+        // Преобразуем blob ссылку в raw
+        // https://github.com/user/repo/blob/main/file.mp3 -> https://raw.githubusercontent.com/user/repo/main/file.mp3
+        const githubRegex = /github\.com\/([^\/]+)\/([^\/]+)\/blob\/([^\/]+)\/(.+)/;
+        const match = url.match(githubRegex);
+        if (match) {
+            const [, user, repo, branch, path] = match;
+            return {
+                url: `https://raw.githubusercontent.com/${user}/${repo}/${branch}/${path}`,
+                type: 'github',
+                warning: 'GitHub ограничивает файлы размером до 100 МБ.'
+            };
+        }
+        // Если уже raw ссылка
+        if (url.includes('raw.githubusercontent.com')) {
+            return { url: url, type: 'github', warning: null };
+        }
+    }
+
+    // 4. Прямые ссылки (UploadFile, Catbox, прямые MP3)
+    // Проверяем расширение файла
+    const audioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.flac'];
+    const isDirectAudio = audioExtensions.some(ext => url.toLowerCase().endsWith(ext));
+    
+    if (isDirectAudio || url.includes('catbox.moe') || url.includes('vocaroo.com')) {
+        return {
+            url: url,
+            type: 'direct',
+            warning: null
+        };
+    }
+
+    // Если ничего не подошло, возвращаем как есть, но с предупреждением
+    return {
+        url: url,
+        type: 'unknown',
+        warning: 'Неизвестный формат ссылки. Воспроизведение может не работать.'
+    };
+}
+    
     function togglePlay() {
         if (state.currentTrackIndex < 0) {
             if (state.tracks.length > 0) {
