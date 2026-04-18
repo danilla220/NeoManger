@@ -367,7 +367,7 @@
                     ok: true,
                     direct: `https://drive.google.com/uc?export=download&id=${match[1]}`,
                     source: 'Google Drive',
-                    warning: 'Может не работать из-за ограничений CORS. Если не играет — используйте Dropbox или Catbox.'
+                    warning: 'Google часто блокирует прямое воспроизведение. Если не играет — используйте Dropbox.'
                 };
             }
             return { ok: false, error: 'Неверная ссылка Google Drive' };
@@ -376,6 +376,8 @@
         // Dropbox
         if (url.includes('dropbox.com')) {
             let clean = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '').replace('?dl=1', '');
+            // Ensure raw parameter
+            if (!clean.includes('raw=1')) clean += (clean.includes('?') ? '&' : '?') + 'raw=1';
             return { ok: true, direct: clean, source: 'Dropbox', warning: null };
         }
 
@@ -388,7 +390,7 @@
                     ok: true,
                     direct: `https://raw.githubusercontent.com/${usr}/${repo}/${branch}/${path}`,
                     source: 'GitHub',
-                    warning: 'Файлы до 100 МБ. Убедитесь, что файл существует в репозитории.'
+                    warning: null
                 };
             }
             if (url.includes('raw.githubusercontent.com')) {
@@ -397,38 +399,15 @@
             return { ok: false, error: 'Неверная ссылка GitHub' };
         }
 
-        // Catbox.moe
-        if (url.includes('catbox.moe')) {
-            return { ok: true, direct: url, source: 'Catbox.moe', warning: null };
-        }
-
-        // Vocaroo
-        if (url.includes('vocaroo.com')) {
-            const id = url.match(/vocaroo\.com\/([a-zA-Z0-9]+)/)?.[1];
-            if (id) {
-                return {
-                    ok: true,
-                    direct: `https://media.vocaroo.com/mp3/${id}`,
-                    source: 'Vocaroo',
-                    warning: null
-                };
-            }
-        }
-
         // Direct audio extensions
-        const audioExts = ['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac', '.opus'];
-        const lower = url.toLowerCase();
+        const audioExts = ['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac'];
+        const lower = url.toLowerCase().split('?')[0]; // Remove query params for check
         if (audioExts.some(ext => lower.endsWith(ext))) {
-            return { ok: true, direct: url, source: 'Прямая ссылка', warning: null };
+            return { ok: true, direct: url, source: 'Direct', warning: null };
         }
 
-        // Fallback: try as-is but warn
-        return {
-            ok: true,
-            direct: url,
-            source: 'Неизвестный источник',
-            warning: 'Ссылка может не работать. Убедитесь, что она ведёт напрямую на аудиофайл и сервер разрешает CORS.'
-        };
+        // Fallback
+        return { ok: true, direct: url, source: 'Unknown', warning: 'Ссылка может не работать без CORS.' };
     }
 
     // === AUTH ===
@@ -450,7 +429,7 @@
         render();
     });
 
-    // === APP FUNCTIONS (exposed to window) ===
+    // === APP FUNCTIONS ===
     window.app = {
         goHome: () => { showFavOnly=false; searchQuery=''; $('searchInput').value=''; render(); },
         handleSearch: (query) => { searchQuery = query.toLowerCase().trim(); render(); },
@@ -480,10 +459,8 @@
         logout: async () => {
             try {
                 await signOut(auth);
-                toast('Вы вышли из аккаунта', 'success');
-            } catch (err) {
-                toast('Ошибка выхода: ' + err.message, 'error');
-            }
+                toast('Вы вышли', 'success');
+            } catch (err) { toast(err.message, 'error'); }
         },
         
         openTrackModal: () => {
@@ -499,8 +476,8 @@
             
             preview.classList.add('show');
             if (result.ok) {
-                let html = `<span class="status">✓ ${result.source}</span>`;
-                if (result.warning) html += `<br><span class="warn">⚠ ${result.warning}</span>`;
+                let html = `<span class="status" style="color:var(--success)">✓ ${result.source}</span>`;
+                if (result.warning) html += `<br><span class="warn" style="color:var(--warning)">⚠ ${result.warning}</span>`;
                 preview.innerHTML = html;
             } else {
                 preview.innerHTML = `<span style="color:var(--danger)">✗ ${result.error}</span>`;
@@ -658,7 +635,7 @@
         }).join('');
     }
 
-    // === PLAYER + VOLUME ===
+    // === PLAYER ===
     const audio = $('audio');
     const savedVol = localStorage.getItem('neomusic_volume');
     const savedMuted = localStorage.getItem('neomusic_muted') === 'true';
@@ -681,25 +658,27 @@
             player.current = t;
             audio.src = t.url;
             
-            // Handle playback with detailed errors
+            // Debug log
+            console.log("Attempting to play:", t.url);
+
             audio.play().then(() => {
                 player.updateUI(true);
                 render();
+                toast(`Играет: ${t.title}`, 'success');
             }).catch(err => {
                 console.error('Playback error:', err);
-                let msg = 'Не удалось воспроизвести трек';
+                let msg = 'Ошибка воспроизведения';
                 
-                // Try to determine error type
                 if (err.name === 'NotAllowedError') {
-                    msg = 'Воспроизведение заблокировано браузером. Нажмите на страницу, затем попробуйте снова.';
-                } else if (err.message?.includes('403')) {
-                    msg = 'Доступ запрещён (403). Проверьте настройки приватности файла.';
-                } else if (err.message?.includes('404')) {
-                    msg = 'Файл не найден (404). Ссылка может быть устаревшей.';
-                } else if (err.message?.toLowerCase().includes('cors')) {
-                    msg = 'Сервер блокирует воспроизведение (CORS). Попробуйте другой хостинг (Dropbox, Catbox).';
-                } else if (err.message?.includes('decode') || err.message?.includes('format')) {
-                    msg = 'Неподдерживаемый формат аудио. Используйте MP3, WAV или OGG.';
+                    msg = 'Нажмите на страницу, чтобы разрешить звук';
+                } else if (err.message && err.message.includes('403')) {
+                    msg = 'Ошибка 403: Доступ запрещен. Проверьте права доступа к файлу.';
+                } else if (err.message && err.message.includes('404')) {
+                    msg = 'Ошибка 404: Файл не найден. Ссылка устарела.';
+                } else if (err.name === 'NotSupportedError') {
+                    msg = 'Формат файла не поддерживается браузером.';
+                } else {
+                    msg = 'Не удалось загрузить аудио. Возможно, ссылка блокируется (CORS). Попробуйте Dropbox.';
                 }
                 
                 toast(msg, 'error');
@@ -794,14 +773,12 @@
         setTimeout(() => t.classList.remove('visible'), 3500);
     }
 
-    // Close modals on overlay click
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) app.closeModals();
         });
     });
 
-    // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
         if (e.target.tagName === 'INPUT') return;
         if (e.code === 'Space') { e.preventDefault(); player.toggle(); }
