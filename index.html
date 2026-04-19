@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeoMusic — Categories & Profile</title>
+    <title>NeoMusic — Fixed Progress</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -81,7 +81,6 @@
         .hero h1 { font-size: 36px; margin-bottom: 10px; }
         .hero p { color: var(--text-dim); }
 
-        /* Category Filter */
         .category-filter {
             display: flex;
             gap: 8px;
@@ -184,7 +183,7 @@
         
         .progress-wrap { width: 100%; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-dim); font-family: monospace; }
         .progress-bg { flex: 1; height: 4px; background: #27272a; border-radius: 2px; cursor: pointer; position: relative; }
-        .progress-fill { height: 100%; background: var(--accent); width: 0%; border-radius: 2px; pointer-events: none; }
+        .progress-fill { height: 100%; background: var(--accent); width: 0%; border-radius: 2px; pointer-events: none; transition: width 0.1s linear; }
 
         .volume-control {
             display: flex; align-items: center; gap: 8px; width: 30%; justify-content: flex-end;
@@ -228,7 +227,6 @@
         .form-hint { font-size: 11px; color: var(--text-dim); margin-top: 6px; line-height: 1.4; }
         .form-hint b { color: var(--accent); }
 
-        /* Profile Section */
         .profile-section {
             background: var(--glass);
             border: 1px solid var(--border);
@@ -318,7 +316,6 @@
             <p>Категории • Статистика • Профиль</p>
         </div>
 
-        <!-- Statistics Bar -->
         <div class="stats-bar">
             <div class="stat-card">
                 <div class="stat-value" id="statTracks">0</div>
@@ -334,7 +331,6 @@
             </div>
         </div>
 
-        <!-- Category Filter -->
         <div class="category-filter" id="categoryFilter">
             <button class="category-btn active" onclick="app.filterCategory('all')">Все</button>
             <button class="category-btn" onclick="app.filterCategory('pop')">Pop</button>
@@ -346,7 +342,7 @@
             <button class="category-btn" onclick="app.filterCategory('classical')">Classical</button>
             <button class="category-btn" onclick="app.filterCategory('metal')">Metal</button>
             <button class="category-btn" onclick="app.filterCategory('indie')">Indie</button>
-            <button class="category-btn" onclick="app.filterCategory('Punk')">Funk</button>
+            <button class="category-btn" onclick="app.filterCategory('other')">Other</button>
         </div>
 
         <div class="search-box">
@@ -385,7 +381,7 @@
             <div class="progress-bg" id="pBar" onclick="player.seek(event)">
                 <div class="progress-fill" id="pFill"></div>
             </div>
-            <span id="pTimeTot">0:00</span>
+            <span id="pTimeTot">--:--</span>
         </div>
     </div>
     <div class="volume-control">
@@ -435,7 +431,6 @@
                     <option value="blues">Blues (Блюз)</option>
                     <option value="country">Country (Кантри)</option>
                     <option value="reggae">Reggae (Регги)</option>
-                    <option value="fonk">Fonk (Фонк)</option>
                     <option value="punk">Punk (Панк)</option>
                     <option value="alternative">Alternative (Альтернатива)</option>
                     <option value="latin">Latin (Латинская)</option>
@@ -511,7 +506,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<audio id="audio" preload="metadata"></audio>
+<audio id="audio" preload="auto"></audio>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -545,25 +540,11 @@
     const $ = (id) => document.getElementById(id);
 
     const CATEGORIES = {
-        pop: 'Pop',
-        rock: 'Rock',
-        hiphop: 'Hip-Hop',
-        electronic: 'Electronic',
-        rb: 'R&B',
-        jazz: 'Jazz',
-        classical: 'Classical',
-        metal: 'Metal',
-        indie: 'Indie',
-        folk: 'Folk',
-        blues: 'Blues',
-        country: 'Country',
-        reggae: 'Reggae',
-        punk: 'Punk',
-        alternative: 'Alternative',
-        latin: 'Latin',
-        kpop: 'K-Pop',
-        soundtrack: 'Soundtrack',
-        other: 'Other'
+        pop: 'Pop', rock: 'Rock', hiphop: 'Hip-Hop', electronic: 'Electronic',
+        rb: 'R&B', jazz: 'Jazz', classical: 'Classical', metal: 'Metal',
+        indie: 'Indie', folk: 'Folk', blues: 'Blues', country: 'Country',
+        reggae: 'Reggae', punk: 'Punk', alternative: 'Alternative',
+        latin: 'Latin', kpop: 'K-Pop', soundtrack: 'Soundtrack', other: 'Other'
     };
 
     function parseAudioLink(url) {
@@ -778,7 +759,6 @@
             $('profEmail').innerText = user.email;
             $('profAvatar').innerText = (user.displayName || 'U')[0].toUpperCase();
             
-            // Count user's tracks and plays
             const userTracks = tracks.filter(t => t.uid === user.uid);
             const userPlays = userTracks.reduce((sum, t) => sum + (t.plays || 0), 0);
             
@@ -786,9 +766,7 @@
             $('profPlaysCount').innerText = userPlays;
             $('profFavsCount').innerText = Object.keys(favorites).length;
             
-            // Render user's tracks
             renderMyTracks(userTracks);
-            
             $('mProfile').classList.add('show');
         },
         
@@ -991,6 +969,11 @@
             player.current = t;
             audio.src = t.url;
             
+            // Сбросить прогресс
+            $('pFill').style.width = '0%';
+            $('pTimeCur').innerText = '0:00';
+            $('pTimeTot').innerText = '--:--';
+            
             try {
                 await audio.play();
                 player.isPlaying = true;
@@ -1050,7 +1033,7 @@
         },
         
         seek: (e) => {
-            if (!audio.duration) return;
+            if (!audio.duration || isNaN(audio.duration)) return;
             const w = e.currentTarget.offsetWidth, x = e.offsetX;
             audio.currentTime = (x / w) * audio.duration;
         },
@@ -1098,15 +1081,38 @@
 
     player.init();
 
+    // Обновление прогресса при воспроизведении
     audio.addEventListener('timeupdate', () => {
+        if (!audio.duration || isNaN(audio.duration)) return;
+        
+        const pct = (audio.currentTime / audio.duration) * 100;
+        $('pFill').style.width = `${pct}%`;
+        $('pTimeCur').innerText = fmt(audio.currentTime);
+        
+        // Обновить общее время если еще не установлено
+        if ($('pTimeTot').innerText === '--:--') {
+            $('pTimeTot').innerText = fmt(audio.duration);
+        }
+        
+        // Подсчет прослушивания
         if (!hasCountedPlay && player.current && audio.currentTime > 30) {
             hasCountedPlay = true;
             incrementPlayCount(player.current.id);
         }
     });
     
+    // Когда метаданные загружены
     audio.addEventListener('loadedmetadata', () => {
-        $('pTimeTot').innerText = fmt(audio.duration);
+        if (audio.duration && !isNaN(audio.duration)) {
+            $('pTimeTot').innerText = fmt(audio.duration);
+        }
+    });
+    
+    // Когда можно играть (иногда duration доступен только здесь)
+    audio.addEventListener('canplay', () => {
+        if (audio.duration && !isNaN(audio.duration) && $('pTimeTot').innerText === '--:--') {
+            $('pTimeTot').innerText = fmt(audio.duration);
+        }
     });
     
     audio.addEventListener('ended', () => {
@@ -1146,7 +1152,12 @@
         }
     }
 
-    function fmt(s) { if(!s || isNaN(s)) return "0:00"; const m=Math.floor(s/60), sec=Math.floor(s%60); return `${m}:${sec<10?'0'+sec:sec}`; }
+    function fmt(s) { 
+        if(!s || isNaN(s) || s === Infinity) return "--:--"; 
+        const m = Math.floor(s/60), sec = Math.floor(s%60); 
+        return `${m}:${sec<10?'0'+sec:sec}`; 
+    }
+    
     function esc(s) { return s ? s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])) : ''; }
     
     function toast(msg, type='info') {
@@ -1173,7 +1184,5 @@
     window.player = player;
     window.app = app;
 </script>
-</body>
-</html>
 </body>
 </html>
